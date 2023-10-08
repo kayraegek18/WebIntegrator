@@ -1,0 +1,4 @@
+name: WebIntegrator
+version: '${project.version}'
+main: net.kayega.webintegrator.WebIntegrator
+api-version: '1.20'
