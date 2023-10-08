@@ -6,13 +6,12 @@ Is a simple library for integrating a website written in nodejs with your minecr
 npm install webintegrator@latest
 ```
 ```js
-const WebIntegrator =  require('webintegrator');
+const { WebIntegrator } =  require('webintegrator');
 
 const  client  =  new  WebIntegrator(1234);
 
 client.onData  = (data) => {
-	// JSON Data
-	// { code: 0, response: 'A Minecraft Server' }
+	// WebIntegratorData { code: 0, response: 'A Minecraft Server' }
 	console.log(data);
 };
 
