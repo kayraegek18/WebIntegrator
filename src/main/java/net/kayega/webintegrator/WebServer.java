@@ -1,16 +1,22 @@
 package net.kayega.webintegrator;
 
 import org.bukkit.Bukkit;
+import org.json.JSONObject;
 
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.Objects;
 import java.util.logging.Level;
 
 public class WebServer implements Runnable {
     ServerSocket server = null;
 
     int port;
+    String password = null;
 
     public WebServer(int port) {
         this.port = port;
@@ -41,9 +47,57 @@ public class WebServer implements Runnable {
                 ClientHandler clientSock
                         = new ClientHandler(client);
 
-                // This thread will handle the client
-                // separately
-                new Thread(clientSock).start();
+                if (password == null) {
+                    new Thread(clientSock).start();
+                    return;
+                }
+
+                Bukkit.getScheduler().scheduleSyncDelayedTask(WebIntegrator.getInstance(), new Runnable() {
+                    @Override
+                    public void run() {
+                        if (clientSock.getState() != ClientHandler.ClientState.WaitingPassword)
+                            return;
+                        if (!client.isConnected())
+                            return;
+                        try {
+                            client.close();
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                }, 10L * 20L);
+
+                String line;
+                BufferedReader in = client.isConnected() ? new BufferedReader(
+                        new InputStreamReader(
+                                client.getInputStream())) : null;
+                PrintWriter out = client.isConnected() ? new PrintWriter(client.getOutputStream(), true) : null;
+                while (in != null && (line = client.isConnected() ? in.readLine() : null) != null) {
+                    if (Objects.requireNonNull(clientSock.getState()) == ClientHandler.ClientState.WaitingPassword) {
+                        try {
+                            Bukkit.getLogger().log(Level.INFO, line);
+                            JSONObject json = new JSONObject(line);
+                            if (json.getString("password").equals(this.password)) {
+                                clientSock.setState(ClientHandler.ClientState.ClientAuthenticated);
+                                if (out != null) {
+                                    JSONObject connected = new JSONObject();
+                                    connected.put("message", "Connected");
+                                    out.println(connected.toString());
+                                    out.flush();
+                                }
+                                new Thread(clientSock).start();
+                            } else {
+                                Bukkit.getLogger().log(Level.INFO, "Password invalid!");
+                                client.close();
+                            }
+                            break;
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                            client.close();
+                            break;
+                        }
+                    }
+                }
             }
         }
         catch (IOException e) {
@@ -71,5 +125,13 @@ public class WebServer implements Runnable {
 
     public ServerSocket getServer() {
         return this.server;
+    }
+
+    public void setPassword(String password) {
+        this.password = password;
+    }
+
+    public String getPassword() {
+        return password;
     }
 }

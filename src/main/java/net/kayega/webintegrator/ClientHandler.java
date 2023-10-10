@@ -13,6 +13,7 @@ import java.util.logging.Level;
 
 public class ClientHandler implements Runnable {
     private final Socket clientSocket;
+    private ClientState state = ClientState.WaitingPassword;
 
     // Constructor
     public ClientHandler(Socket socket)
@@ -22,6 +23,8 @@ public class ClientHandler implements Runnable {
 
     public void run()
     {
+        if (state == ClientState.WaitingPassword)
+            return;
         PrintWriter out = null;
         BufferedReader in = null;
         try {
@@ -37,13 +40,9 @@ public class ClientHandler implements Runnable {
 
             String line;
             while ((line = in.readLine()) != null) {
-                Bukkit.getLogger().log(Level.INFO,
-                        "Sent from the client: " + line);
-
                 JSONObject message = new JSONObject(line);
-
-                for (Integer integer : WebIntegrator.getInstance().packets.keySet()){
-                    if (message.getInt("code") == integer) {
+                for (Integer integer : WebIntegrator.getInstance().packets.keySet()) {
+                    if ((message.getInt("code") - 7) == integer) {
                         String response = WebIntegrator.getInstance().packets.get(integer).getCallback().run(
                                 new JSONObject(message.getString("data"))
                         );
@@ -59,7 +58,12 @@ public class ClientHandler implements Runnable {
             }
         }
         catch (IOException e) {
-
+            if (clientSocket.isConnected() && out != null) {
+                JSONObject jo = new JSONObject();
+                jo.put("error", "We encountered an error");
+                out.println(jo.toString());
+                out.flush();
+            }
         }
         finally {
             try {
@@ -75,5 +79,18 @@ public class ClientHandler implements Runnable {
                 e.printStackTrace();
             }
         }
+    }
+
+    public void setState(ClientState state) {
+        this.state = state;
+    }
+
+    public ClientState getState() {
+        return state;
+    }
+
+    public enum ClientState {
+        WaitingPassword,
+        ClientAuthenticated
     }
 }
