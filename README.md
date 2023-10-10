@@ -8,7 +8,10 @@ npm install webintegrator@latest
 ```js
 const { WebIntegrator } =  require('webintegrator');
 
-const  client  =  new  WebIntegrator(1234);
+const  client  =  new  WebIntegrator(
+	1234, // PORT
+	"test", // PASSWORD (optional)
+);
 
 client.onData  = (data) => {
 	// WebIntegratorData { code: 0, response: 'A Minecraft Server' }
@@ -56,12 +59,19 @@ public final class WebIntegratorTest extends JavaPlugin {
 	@Override  
 	public void onEnable() {  
 		// Creating server (127.0.0.1:1234)
-		params = WebIntegrator.getInstance().createServer(1234);
+		params = WebIntegrator.getInstance().createServer(
+			1234, // PORT
+			"test", // PASSWORD (optional)
+		);
 		  
 		// Register your own packet
 		WebIntegrator.getInstance().registerPacket(new WebPacket(0, new WebPacket.WebPacketCallback() {  
 			@Override  
-			public String run(JSONObject jsonData) {  
+			public String run(JSONObject jsonData) {
+				String player = jsonData.getString("player");
+				// Gets the value sent from the client and throws an error
+				// if it does not exist, so it is recommended to use try/catch.
+
 				return "RESPONSE FOR CLIENT";  
 			}  
 		}));  
